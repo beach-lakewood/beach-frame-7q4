@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Beach Family</title>
+<!-- These tell iPadOS to open the home-screen icon full screen, with no Safari bars -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Family">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<style>
+  html, body { margin: 0; height: 100%; background: #14171c; overflow: hidden; }
+  iframe { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; display: block; }
+  #msg, #setup { position: fixed; inset: 0; display: flex; flex-direction: column; gap: 2vh;
+         align-items: center; justify-content: center;
+         color: #8d95a3; font: 3vh -apple-system, Helvetica, Arial, sans-serif; }
+  #setup { display: none; background: #14171c; z-index: 2; }
+  #setup input, #setup button { font: inherit; padding: 1.2vh 2vh; border-radius: 1vh; border: 1px solid #2a303a; }
+  #setup input { background: #1b1f26; color: #eef0f3; width: 40vw; }
+  #setup button { background: #f2b84b; color: #14171c; border: 0; }
+</style>
+</head>
+<body>
+<div id="msg">Loading…</div>
+<div id="setup">
+  <div>Enter the calendar key (one time only)</div>
+  <input id="keyIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+  <button id="saveKey">Save</button>
+</div>
+<iframe id="cal" allow="autoplay" title="Beach Family calendar"></iframe>
+<script>
+  // Your wall calendar (Apps Script web app). The key is NOT stored here, because this page is public.
+  // It's entered once on the iPad and kept on that device. Add #reset to the address to enter it again.
+  var APP = 'https://script.google.com/macros/s/AKfycby9zv5mwe1ZKXgwqf9L1fZbh5ioAjUOyN1xI82ZnAySXngddTkXgJAffxicEKtMHZCjUw/exec';
+
+  function getKey() { try { return localStorage.getItem('frameKey') || ''; } catch (e) { return ''; } }
+  function setKey(k) { try { localStorage.setItem('frameKey', k); } catch (e) {} }
+  if (location.hash === '#reset') { try { localStorage.removeItem('frameKey'); } catch (e) {} history.replaceState(null, '', location.pathname); }
+
+  var frame = document.getElementById('cal');
+  function load() {
+    var k = getKey();
+    if (!k) { document.getElementById('setup').style.display = 'flex'; return; }
+    frame.src = APP + '?key=' + encodeURIComponent(k) + '&t=' + Date.now();
+  }
+  document.getElementById('saveKey').onclick = function () {
+    var k = document.getElementById('keyIn').value.trim();
+    if (!k) return;
+    setKey(k);
+    document.getElementById('setup').style.display = 'none';
+    load();
+  };
+  frame.onload = function () { if (frame.src) document.getElementById('msg').style.display = 'none'; };
+  load();
+
+  // Reload once a day at 3 AM so script updates and new photos come through on their own
+  function scheduleNightly() {
+    var now = new Date(), next = new Date(now);
+    next.setHours(3, 0, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    setTimeout(function () { load(); scheduleNightly(); }, next - now);
+  }
+  scheduleNightly();
+
+  // If Wi-Fi drops, reload as soon as it comes back
+  window.addEventListener('online', load);
+</script>
+</body>
+</html>
